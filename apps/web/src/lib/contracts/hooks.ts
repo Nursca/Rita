@@ -8,28 +8,9 @@ import { checkDelegation, upgradeAndInitialize } from './eip7702'
 import { usePrivyEIP7702 } from './usePrivyEIP7702'
 import { CONTRACTS } from './config'
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export interface InheritanceEntry {
-  /** The owner EOA whose account holds the inheritance */
-  owner: `0x${string}`
-  /** "ACTIVE" | "CLAIMABLE" | undefined while loading */
-  ritaState: string | undefined
-  /** Unix timestamp (seconds) when the account becomes claimable */
-  nextPingtime: bigint | undefined
-  /** ERC-20 tokens the heir can claim */
-  supportedTokens: `0x${string}`[]
-  /** ETH balance of the owner's delegated account */
-  ethBalance: string
-  /** True when the account is past its threshold and assets can be claimed */
-  isClaimable: boolean
-}
-
 export function useRitaDashboardData() {
   const { address } = useAccount()
-
+  
   const { data } = useReadContracts({
     contracts: [
       { abi: ritaDelegateAbi, address: address, functionName: 'getRitaState' },
@@ -46,15 +27,15 @@ export function useRitaDashboardData() {
     ],
     query: { enabled: Boolean(address) },
   })
-
+  
   const { data: ethBalance } = useBalance({
     address: address,
   })
-
+  
   const ownersByHeir = useMemo(() => {
     return (data?.[5].result as `0x${string}`[] | undefined) ?? []
   }, [data?.[5].result])
-
+  
   return useMemo(
     () => ({
       ritaState: data?.[0].result as string | undefined,
@@ -89,7 +70,7 @@ export interface InheritanceEntry {
 
 export function useInheritances() {
   const { address } = useAccount()
-
+  
   // Step 1: get the list of owners who registered this address as an heir
   const { data: ownersData, isLoading: ownersLoading } = useReadContracts({
     contracts: [
@@ -102,12 +83,12 @@ export function useInheritances() {
     ],
     query: { enabled: Boolean(address) },
   })
-
+  
   const owners = useMemo<`0x${string}`[]>(
     () => (ownersData?.[0].result as `0x${string}`[] | undefined) ?? [],
     [ownersData],
   )
-
+  
   // Step 2: for each owner, read state + tokens from their delegated account
   const perOwnerContracts = useMemo(
     () =>
@@ -118,19 +99,19 @@ export function useInheritances() {
       ]),
     [owners],
   )
-
+  
   const { data: perOwnerData, isLoading: detailsLoading } = useReadContracts({
     contracts: perOwnerContracts,
     query: { enabled: owners.length > 0 },
   })
-
+  
   // Step 3: read ETH balances for each owner
   // wagmi's useBalance only handles one address at a time, so we use
   // a public client query to fetch each owner's ETH balance.
   // for the first owner only and note the limitation. For a full multi-owner
   // balance read we rely on the owner's ETH balance via a public client query.
   const publicClient = usePublicClient()
-
+  
   const { data: ethBalances } = useQuery({
     queryKey: ['heir-eth-balances', owners.join(',')],
     queryFn: async () => {
@@ -143,12 +124,12 @@ export function useInheritances() {
     },
     enabled: owners.length > 0 && Boolean(publicClient),
   })
-
+  
   // Step 4: assemble InheritanceEntry[]
   const inheritances = useMemo<InheritanceEntry[]>(() => {
     if (owners.length === 0) return []
     const now = BigInt(Math.floor(Date.now() / 1000))
-
+    
     return owners.map((owner, i) => {
       const base = i * 3
       const ritaState = perOwnerData?.[base]?.result as string | undefined
@@ -156,11 +137,11 @@ export function useInheritances() {
       const supportedTokens = (perOwnerData?.[base + 2]?.result as `0x${string}`[] | undefined) ?? []
       const ethBalance = ethBalances?.[i] ?? '0'
       const isClaimable = ritaState === 'CLAIMABLE' || (nextPingtime !== undefined && now >= nextPingtime)
-
+      
       return { owner, ritaState, nextPingtime, supportedTokens, ethBalance, isClaimable }
     })
   }, [owners, perOwnerData, ethBalances])
-
+  
   return {
     inheritances,
     isLoading: ownersLoading || (owners.length > 0 && detailsLoading),
@@ -174,7 +155,7 @@ export function useInheritances() {
 
 export function useClaimInheritance(owner: `0x${string}`) {
   const { writeContractAsync, isPending } = useWriteContract()
-
+  
   return {
     isPending,
     claimEth: () =>
@@ -204,11 +185,11 @@ export function useRitaActions() {
   const { address } = useAccount()
   const { writeContractAsync, isPending } = useWriteContract()
   const dashboard = useRitaDashboardData()
-
+  
   // For heir actions, we typically act on the owner's account.
   // For owner actions, we act on our own account (address).
   const targetAddress = address
-
+  
   return {
     isPending,
     claimEth: () => {
@@ -308,13 +289,13 @@ export function useRitaActions() {
 export function useIsUpgraded() {
   const { address } = useAccount()
   const publicClient = usePublicClient()
-
+  
   const { data: code } = useQuery({
     queryKey: ['account-code', address],
     queryFn: () => publicClient?.getCode({ address: address! }),
     enabled: !!address && !!publicClient,
   })
-
+  
   return code?.startsWith('0xef0100') ?? false
 }
 
@@ -325,7 +306,7 @@ export function useEIP7702() {
   const [error, setError] = useState<string | null>(null)
   
   const privy7702 = usePrivyEIP7702()
-
+  
   const upgrade = async (
     heirs: string[],
     thresholdDays: number,
@@ -333,7 +314,7 @@ export function useEIP7702() {
   ) => {
     setIsPending(true)
     setError(null)
-
+    
     try {
       const embeddedWallet = wallets.find((w) => w.walletClientType === 'privy');
       
@@ -355,12 +336,12 @@ export function useEIP7702() {
       setIsPending(false)
     }
   }
-
+  
   const checkStatus = async () => {
     if (!address) return false
     const result = await checkDelegation(address)
     return result.isDelegated
   }
-
+  
   return { upgrade, checkStatus, isPending, error }
 }

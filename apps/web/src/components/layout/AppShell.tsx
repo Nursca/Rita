@@ -2,7 +2,6 @@ import type { PropsWithChildren } from 'react'
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { usePrivy, useWallets, type ConnectedWallet } from '@privy-io/react-auth'
-
 const navItems = [
   { to: '/app/dashboard', label: 'Dashboard' },
   { to: '/app/my-will', label: 'My Will' },
@@ -11,19 +10,15 @@ const navItems = [
   { to: '/app/assets', label: 'Assets' },
   { to: '/app/settings', label: 'Settings' },
 ] as const
-
 export function AppShell({ children }: PropsWithChildren) {
   const location = useLocation()
   const { login, logout, authenticated } = usePrivy()
   const { wallets } = useWallets()
-
   const embeddedWallet = wallets.find((w: ConnectedWallet) => w.walletClientType === 'privy')
   const address = embeddedWallet?.address as `0x${string}` | undefined
-
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
-
   // Close dropdown when clicking outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -34,14 +29,12 @@ export function AppShell({ children }: PropsWithChildren) {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
-
   const handleCopy = () => {
     if (!address) return
     navigator.clipboard.writeText(address)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
-
   return (
     <div className="min-h-screen bg-[#F9FBF2]">
       <aside className="fixed left-0 top-0 z-40 flex h-full w-[260px] flex-col border-r border-stone-800 bg-stone-900 py-6">
@@ -80,7 +73,7 @@ export function AppShell({ children }: PropsWithChildren) {
           )}
         </div>
       </aside>
-
+      
       <header className="fixed right-0 top-0 z-30 flex h-16 w-[calc(100%-260px)] items-center justify-end border-b border-stone-200 bg-[#F9FBF2] px-8">
         {address ? (
           <div ref={dropdownRef} className="relative">
@@ -101,14 +94,12 @@ export function AppShell({ children }: PropsWithChildren) {
                 <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-
             {/* Dropdown panel */}
             {open && (
               <div className="absolute right-0 top-full mt-2 w-[340px] rounded-xl border border-stone-200 bg-white shadow-xl ring-1 ring-black/5 overflow-hidden">
                 <div className="border-b border-stone-100 px-4 py-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">Connected Wallet</p>
                 </div>
-
                 {/* Full address display */}
                 <div className="px-4 py-3">
                   <p
@@ -118,7 +109,6 @@ export function AppShell({ children }: PropsWithChildren) {
                     {address}
                   </p>
                 </div>
-
                 {/* Actions */}
                 <div className="flex items-center gap-2 border-t border-stone-100 px-4 py-3">
                   <button
@@ -169,7 +159,6 @@ export function AppShell({ children }: PropsWithChildren) {
           </span>
         )}
       </header>
-
       <main className="ml-[260px] min-h-screen pt-16">{children}</main>
     </div>
   )
